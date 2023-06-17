@@ -64,10 +64,10 @@ qcoro::co_spawn(func, e);
 
 ```
 
-2. thread_pool
+2. thread_pool_executor
 ```cpp
 // multithread
-qcoro::thread_pool tp;
+qcoro::thread_pool_executor tp;
 qcoro::co_spawn(func, tp);
 
 // wait
