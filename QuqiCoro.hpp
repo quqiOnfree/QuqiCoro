@@ -16,7 +16,7 @@
 
 QUQICORO_NAMESPACE_START
 
-// 执行器
+// executor
 class executor
 {
 public:
@@ -28,6 +28,7 @@ public:
     executor& operator=(const executor&) = delete;
     executor& operator=(executor&&) = default;
 
+    // post a task
     template<typename Func, typename... Args>
     void post(Func&& func, Args&&... args)
     {
@@ -41,7 +42,7 @@ protected:
     }
 };
 
-//线程池
+// thread pool inherit from executor
 class thread_pool : public executor
 {
 public:
@@ -49,12 +50,15 @@ public:
         can_join_(true),
         is_running_(true)
     {
+        // work function of single thread
         auto work_func = [this]()
             {
                 while (true)
                 {
+                    // get the lock to get a task
                     std::unique_lock<std::mutex> lock(mutex_);
                     cv_.wait(lock, [&]() {return !funcs_.empty() || !is_running_; });
+                    // keep running until is_running_ is false and funcs_ is empty
                     if (!is_running_ && funcs_.empty())
                         return;
                     else if (funcs_.empty())
@@ -65,10 +69,12 @@ public:
 
                     lock.unlock();
 
+                    // execute the task
                     task();
                 }
             };
 
+        // add threads
         for (int i = 0; i < num; i++)
         {
             threads_.emplace_back(work_func);
@@ -83,11 +89,13 @@ public:
         detach();
     }
 
+    // if threads can be joined
     bool joinable() const
     {
         return can_join_;
     }
 
+    // join all threads
     void join()
     {
         if (!can_join_)
@@ -102,6 +110,7 @@ public:
         }
     }
 
+    // detach all threads
     void detach()
     {
         if (!can_join_)
@@ -113,6 +122,7 @@ public:
         }
     }
 
+    // post a task
     template<typename Func, typename... Args>
     void post(Func&& func, Args&&... args)
     {
@@ -134,13 +144,6 @@ private:
     std::condition_variable             cv_;
     std::mutex                          mutex_;
     bool                                can_join_;
-};
-
-class completion
-{
-public:
-    completion() = default;
-    ~completion() = default;
 };
 
 // 非 void 协程
@@ -421,6 +424,7 @@ public:
     T       await_resume() { return result_; }
     void    await_suspend(std::coroutine_handle<> handle)
     {
+        // callback function
         auto f = [handle, this](T value) {
             result_ = std::move(value);
             ready_ = true;
@@ -471,6 +475,7 @@ public:
     void    await_resume() {}
     void    await_suspend(std::coroutine_handle<> handle)
     {
+        // callback function
         auto f = [handle, this]() {
             ready_ = true;
             handle.resume();
@@ -486,6 +491,7 @@ public:
     bool            ready_ = false;
 };
 
+// spawn a coroutine of awaiter
 void co_spawn(std::function<qcoro::awaiter<void>(qcoro::executor&)> func, qcoro::executor& e)
 {
     auto awaiter = func(e);
