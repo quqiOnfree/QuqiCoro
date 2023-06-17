@@ -1,8 +1,8 @@
-﻿#ifndef QUQICOROR_HPP
-#define QUQICOROR_HPP
+﻿#ifndef QUQICORO_HPP
+#define QUQICORO_HPP
 
-#define QUQI_NAME_SPACE_START namespace qcoro {
-#define QUQI_NAME_SPACE_END }
+#define QUQICORO_NAMESPACE_START namespace qcoro {
+#define QUQICORO_NAMESPACE_END }
 
 #include <coroutine>
 #include <thread>
@@ -14,7 +14,7 @@
 #include <condition_variable>
 #include <stdexcept>
 
-QUQI_NAME_SPACE_START
+QUQICORO_NAMESPACE_START
 
 // 执行器
 class executor
@@ -494,6 +494,6 @@ void co_spawn(std::function<qcoro::awaiter<void>(qcoro::executor&)> func, qcoro:
     }
 }
 
-QUQI_NAME_SPACE_END
+QUQICORO_NAMESPACE_END
 
-#endif // !QUQICOROR_HPP
+#endif // !QUQICORO_HPP
