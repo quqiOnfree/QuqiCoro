@@ -1,7 +1,13 @@
 ﻿# QuqiCoro
 c++20 coroutine library
 
-## use coroutine with QuqiCoro
+## Import this library
+```cpp
+#include "QuqiCoro.hpp"
+
+```
+
+## Use coroutine with QuqiCoro
 
 ### coroutine
 - co_yield and co_return
