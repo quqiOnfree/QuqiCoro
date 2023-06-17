@@ -148,7 +148,7 @@ private:
 
 // 非 void 协程
 template<class T, class RT = T>
-class coroutine final
+class generator final
 {
 public:
     class promise_type;
@@ -192,7 +192,7 @@ public:
         T result_;
         RT revalue_;
 
-        coroutine get_return_object() { return { std::coroutine_handle<promise_type>::from_promise(*this) }; }
+        generator get_return_object() { return { std::coroutine_handle<promise_type>::from_promise(*this) }; }
         std::suspend_never initial_suspend() noexcept { return {}; }
         std::suspend_always final_suspend() noexcept { return {}; }
         std::suspend_always yield_value(T value)
@@ -241,7 +241,7 @@ public:
 
 // void协程
 template<class T>
-class coroutine<T, void> final
+class generator<T, void> final
 {
 public:
     class promise_type;
@@ -284,7 +284,7 @@ public:
     public:
         T result_;
 
-        coroutine get_return_object() { return { std::coroutine_handle<promise_type>::from_promise(*this) }; }
+        generator get_return_object() { return { std::coroutine_handle<promise_type>::from_promise(*this) }; }
         std::suspend_never initial_suspend() noexcept { return {}; }
         std::suspend_always final_suspend() noexcept { return {}; }
         std::suspend_always yield_value(T value)
@@ -330,7 +330,7 @@ public:
 
 // 双 void 协程
 template<>
-class coroutine<void, void> final
+class generator<void, void> final
 {
 public:
     class promise_type;
@@ -361,7 +361,7 @@ public:
     class promise_type
     {
     public:
-        coroutine get_return_object() { return { std::coroutine_handle<promise_type>::from_promise(*this) }; }
+        generator get_return_object() { return { std::coroutine_handle<promise_type>::from_promise(*this) }; }
         std::suspend_never initial_suspend() noexcept { return {}; }
         std::suspend_always final_suspend() noexcept { return {}; }
         void unhandled_exception() { /*std::terminate();*/ }

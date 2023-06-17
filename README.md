@@ -9,11 +9,11 @@ c++20 coroutine library
 
 ## Use coroutine with QuqiCoro
 
-### coroutine
+### generator
 - co_yield and co_return
 ```cpp
 // range of python in c++20 (lol)
-qcoro::coroutine<int, void> range(int a, int b, int c = 1)
+qcoro::generator<int, void> range(int a, int b, int c = 1)
 {
 	for (int i = 0; i < b; i += c)
 	{

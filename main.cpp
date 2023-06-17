@@ -9,7 +9,7 @@
 
 using namespace std;
 
-qcoro::coroutine<int, void> range(int a, int b, int c = 1)
+qcoro::generator<int, void> range(int a, int b, int c = 1)
 {
 	for (int i = 0; i < b; i += c)
 	{
@@ -18,7 +18,7 @@ qcoro::coroutine<int, void> range(int a, int b, int c = 1)
 	co_return;
 }
 
-qcoro::coroutine<std::string, void> strs()
+qcoro::generator<std::string, void> strs()
 {
 	std::vector<std::string> a = { "123","456","789" };
 	for (auto i : a)
