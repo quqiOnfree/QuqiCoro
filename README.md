@@ -36,10 +36,13 @@ qcoro::awaiter<void> func(qcoro::executor& e)
 {
 	// async_cin
 	qcoro::awaiter<std::string> a([](std::function<void(std::string)> func, qcoro::executor& e) {
+		// post a task to executor
 		e.post([func]()
 			{
 				std::string result;
 				std::cin >> result;
+
+				// callback
 				func(result);
 			});
 
@@ -63,8 +66,11 @@ qcoro::co_spawn(func, e);
 
 2. thread_pool
 ```cpp
+// multithread
 qcoro::thread_pool tp;
 qcoro::co_spawn(func, tp);
+
+// wait
 tp.join();
 
 ```
