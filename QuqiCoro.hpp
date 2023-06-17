@@ -22,11 +22,11 @@ class executor
 public:
     executor() = default;
     executor(const executor&) = delete;
-    executor(executor&&) noexcept = default;
+    executor(executor&&) = delete;
     virtual ~executor() = default;
 
     executor& operator=(const executor&) = delete;
-    executor& operator=(executor&&) = default;
+    executor& operator=(executor&&) = delete;
 
     // post a task
     template<typename Func, typename... Args>
@@ -48,7 +48,8 @@ class thread_pool : public executor
 public:
     explicit thread_pool(int num = 12) :
         can_join_(true),
-        is_running_(true)
+        is_running_(true),
+        working_thread_num_(0)
     {
         // work function of single thread
         auto work_func = [this]()
@@ -57,13 +58,14 @@ public:
                 {
                     // get the lock to get a task
                     std::unique_lock<std::mutex> lock(mutex_);
-                    cv_.wait(lock, [&]() {return !funcs_.empty() || !is_running_; });
+                    cv_.wait(lock, [&]() {return !funcs_.empty() || !(is_running_ || working_thread_num_); });
                     // keep running until is_running_ is false and funcs_ is empty
-                    if (!is_running_ && funcs_.empty())
+                    if (!is_running_ && funcs_.empty() && !working_thread_num_)
                         return;
                     else if (funcs_.empty())
                         continue;
 
+                    working_thread_num_++;
                     auto task = std::move(funcs_.front());
                     funcs_.pop();
 
@@ -71,6 +73,8 @@ public:
 
                     // execute the task
                     task();
+                    working_thread_num_--;
+                    cv_.notify_all();
                 }
             };
 
@@ -80,14 +84,7 @@ public:
             threads_.emplace_back(work_func);
         }
     }
-    virtual ~thread_pool()
-    {
-        if (!can_join_)
-            return;
-        is_running_ = false;
-        cv_.notify_all();
-        detach();
-    }
+    virtual ~thread_pool() = default;
 
     // if threads can be joined
     bool joinable() const
@@ -110,18 +107,6 @@ public:
         }
     }
 
-    // detach all threads
-    void detach()
-    {
-        if (!can_join_)
-            throw std::runtime_error("can't detach");
-        can_join_ = false;
-        for (auto i = threads_.begin(); i != threads_.end(); i++)
-        {
-            i->detach();
-        }
-    }
-
     // post a task
     template<typename Func, typename... Args>
     void post(Func&& func, Args&&... args)
@@ -139,11 +124,12 @@ protected:
 
 private:
     std::atomic<bool>                   is_running_;
+    std::atomic<int>                    working_thread_num_;
     std::queue<std::function<void()>>   funcs_;
     std::vector<std::thread>            threads_;
     std::condition_variable             cv_;
     std::mutex                          mutex_;
-    bool                                can_join_;
+    std::atomic<bool>                   can_join_;
 };
 
 // 非 void 协程
@@ -494,10 +480,11 @@ public:
 // spawn a coroutine of awaiter
 void co_spawn(std::function<qcoro::awaiter<void>(qcoro::executor&)> func, qcoro::executor& e)
 {
-    auto awaiter = func(e);
-    while (!awaiter.handle_.done())
-    {
-    }
+    auto f = [func, &e]() -> generator<void> {
+        co_await func(e);
+        co_return;
+        };
+    f();
 }
 
 QUQICORO_NAMESPACE_END
