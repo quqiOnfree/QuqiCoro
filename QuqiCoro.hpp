@@ -16,7 +16,7 @@
 
 QUQICORO_NAMESPACE_START
 
-// executor
+// base executor
 class executor
 {
 public:
@@ -43,10 +43,10 @@ protected:
 };
 
 // thread pool inherit from executor
-class thread_pool : public executor
+class thread_pool_executor : public executor
 {
 public:
-    explicit thread_pool(int num = 12) :
+    explicit thread_pool_executor(int num = 12) :
         can_join_(true),
         is_running_(true),
         working_thread_num_(0)
@@ -84,7 +84,7 @@ public:
             threads_.emplace_back(work_func);
         }
     }
-    virtual ~thread_pool() = default;
+    virtual ~thread_pool_executor() = default;
 
     // if threads can be joined
     bool joinable() const

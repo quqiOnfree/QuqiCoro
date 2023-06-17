@@ -45,22 +45,29 @@ qcoro::awaiter<void> func(qcoro::executor& e)
 
 int main()
 {
-	
+	// range
 	for (auto i : range(0, 100))
 	{
 		cout << i << '\n';
 	}
 
+	// strs
 	for (auto i : strs())
 	{
 		cout << i << '\n';
 	}
 
-	qcoro::thread_pool tp;
-	//异步cin
+	// 多线程执行器
+	qcoro::thread_pool_executor tp;
+	//异步 cin
 	qcoro::co_spawn(func, tp);
-
+	// 等待所有任务完成
 	tp.join();
+
+	// 单线程执行器
+	qcoro::executor e;
+	//同步 cin
+	qcoro::co_spawn(func, e);
 	
 	return 0;
 }
