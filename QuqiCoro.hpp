@@ -9,6 +9,7 @@
 #include <atomic>
 #include <mutex>
 #include <queue>
+#include <chrono>
 #include <functional>
 #include <vector>
 #include <condition_variable>
@@ -475,6 +476,34 @@ public:
     executor&       executor_;
     executor        local_executor_;
     bool            ready_ = false;
+};
+
+// timer
+class timer
+{
+public:
+    timer() = default;
+    ~timer() = default;
+
+    template<class _Rep, class _Period, typename Func, typename... Args>
+    void async_wait(const std::chrono::duration<_Rep, _Period>& d, executor& e, Func&& func, Args&&... args)
+    {
+        e.post([d, &e](Func&& func, Args&&... args) {
+            std::this_thread::sleep_for(d);
+            func(args...);
+            }, std::forward<Func>(func), std::forward<Args>(args)...);
+    }
+
+    template<class _Rep, class _Period>
+    awaiter<void> async_wait(const std::chrono::duration<_Rep, _Period>& d, executor& e)
+    {
+        return awaiter<void>([d](std::function<void()> func, executor& e) {
+            e.post([func, d]() {
+                std::this_thread::sleep_for(d);
+                func();
+                });
+            }, e);
+    }
 };
 
 // spawn a coroutine of awaiter
