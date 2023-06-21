@@ -59,7 +59,12 @@ public:
                 {
                     // get the lock to get a task
                     std::unique_lock<std::mutex> lock(mutex_);
-                    cv_.wait(lock, [&]() {return !funcs_.empty() || !(is_running_ || working_thread_num_); });
+                    cv_.wait(lock,
+                        [&]() {
+                            return !funcs_.empty() || !(is_running_ || working_thread_num_);
+                        }
+                    );
+
                     // keep running until is_running_ is false and funcs_ is empty
                     if (!is_running_ && funcs_.empty() && !working_thread_num_)
                         return;
@@ -74,8 +79,8 @@ public:
 
                     // execute the task
                     task();
-                    working_thread_num_--;
-                    cv_.notify_all();
+                    if (!--working_thread_num_)
+                        cv_.notify_all();
                 }
             };
 
@@ -133,6 +138,28 @@ private:
     std::atomic<bool>                   can_join_;
 };
 
+class thread_executor : public executor
+{
+public:
+    thread_executor() = default;
+    ~thread_executor() = default;
+
+    // post a task
+    template<typename Func, typename... Args>
+    void post(Func&& func, Args&&... args)
+    {
+        _post(std::bind(std::forward<Func>(func), std::forward<Args>(args)...));
+    }
+
+protected:
+    virtual void _post(std::function<void()> func)
+    {
+        std::thread([func]() {
+            func();
+            }).detach();
+    }
+};
+
 // 非 void 协程
 template<class T, class RT = T>
 class generator final
@@ -179,7 +206,9 @@ public:
         T result_;
         RT revalue_;
 
-        generator get_return_object() { return { std::coroutine_handle<promise_type>::from_promise(*this) }; }
+        generator get_return_object() {
+            return { std::coroutine_handle<promise_type>::from_promise(*this) };
+        }
         std::suspend_never initial_suspend() noexcept { return {}; }
         std::suspend_always final_suspend() noexcept { return {}; }
         std::suspend_always yield_value(T value)
@@ -271,7 +300,10 @@ public:
     public:
         T result_;
 
-        generator get_return_object() { return { std::coroutine_handle<promise_type>::from_promise(*this) }; }
+        generator get_return_object()
+        {
+            return { std::coroutine_handle<promise_type>::from_promise(*this) };
+        }
         std::suspend_never initial_suspend() noexcept { return {}; }
         std::suspend_always final_suspend() noexcept { return {}; }
         std::suspend_always yield_value(T value)
@@ -348,7 +380,10 @@ public:
     class promise_type
     {
     public:
-        generator get_return_object() { return { std::coroutine_handle<promise_type>::from_promise(*this) }; }
+        generator get_return_object()
+        {
+            return { std::coroutine_handle<promise_type>::from_promise(*this) };
+        }
         std::suspend_never initial_suspend() noexcept { return {}; }
         std::suspend_always final_suspend() noexcept { return {}; }
         void unhandled_exception() { /*std::terminate();*/ }
@@ -397,7 +432,10 @@ public:
     public:
         T result_;
 
-        awaiter get_return_object() { return { std::coroutine_handle<promise_type>::from_promise(*this) }; }
+        awaiter get_return_object()
+        {
+            return { std::coroutine_handle<promise_type>::from_promise(*this) };
+        }
         std::suspend_never initial_suspend() noexcept { return {}; }
         std::suspend_always final_suspend() noexcept { return {}; }
         void unhandled_exception() { std::terminate(); }
@@ -451,7 +489,10 @@ public:
     class promise_type
     {
     public:
-        awaiter get_return_object() { return { std::coroutine_handle<promise_type>::from_promise(*this) }; }
+        awaiter get_return_object()
+        {
+            return { std::coroutine_handle<promise_type>::from_promise(*this) };
+        }
         std::suspend_never initial_suspend() noexcept { return {}; }
         std::suspend_always final_suspend() noexcept { return {}; }
         void unhandled_exception() { std::terminate(); }
@@ -497,24 +538,29 @@ public:
     template<class _Rep, class _Period>
     awaiter<void> async_wait(const std::chrono::duration<_Rep, _Period>& d, executor& e)
     {
-        return awaiter<void>([d](std::function<void()> func, executor& e) {
+        return { [d](std::function<void()> func, executor& e) {
             e.post([func, d]() {
                 std::this_thread::sleep_for(d);
                 func();
                 });
-            }, e);
+            }, e };
     }
 };
 
 // spawn a coroutine of awaiter
-void co_spawn(std::function<qcoro::awaiter<void>(qcoro::executor&)> func, qcoro::executor& e)
+void co_spawn(std::function<qcoro::awaiter<void>()> func, qcoro::executor& e)
 {
-    auto f = [func, &e]() -> generator<void> {
-        co_await func(e);
-        co_return;
-        };
-    f();
+    e.post([func, &e]() {
+        auto f = [func, &e]() -> generator<void> {
+            co_await func();
+            co_return;
+            };
+        f();
+        });
 }
+
+executor        use_await_t;
+thread_executor detach_t;
 
 QUQICORO_NAMESPACE_END
 

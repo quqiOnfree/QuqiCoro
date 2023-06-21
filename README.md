@@ -32,24 +32,18 @@ for (auto i : range(0, 100))
 ### awaiter
 - co_await and co_return
 ```cpp
-qcoro::awaiter<void> func(qcoro::executor& e)
+qcoro::awaiter<void> func()
 {
-	// async_cin
 	qcoro::awaiter<std::string> a([](std::function<void(std::string)> func, qcoro::executor& e) {
-		// post a task to executor
 		e.post([func]()
 			{
 				std::string result;
 				std::cin >> result;
-
-				// callback
 				func(result);
 			});
 
-		}, e);
-
-	// get cin result
-	std::cout << co_await a << '\n';
+		}, qcoro::use_await_t);
+	co_await a;
 	co_return;
 }
 
@@ -59,8 +53,8 @@ qcoro::awaiter<void> func(qcoro::executor& e)
 - run awaiter
 1. normal executor
 ```cpp
-qcoro::executor e;
-qcoro::co_spawn(func, e);
+// executor use_await_t; -> in "QuqiCoro.hpp"
+qcoro::co_spawn(func, qcoro::use_await_t);
 
 ```
 

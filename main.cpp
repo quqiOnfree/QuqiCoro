@@ -28,9 +28,9 @@ qcoro::generator<std::string, void> strs()
 	co_return;
 }
 
-qcoro::awaiter<void> func(qcoro::executor& e)
+qcoro::awaiter<void> func()
 {
-	/*qcoro::awaiter<std::string> a([](std::function<void(std::string)> func, qcoro::executor& e) {
+	qcoro::awaiter<std::string> a([](std::function<void(std::string)> func, qcoro::executor& e) {
 		e.post([func]()
 			{
 				std::string result;
@@ -38,11 +38,8 @@ qcoro::awaiter<void> func(qcoro::executor& e)
 				func(result);
 			});
 
-		}, e);*/
-	qcoro::timer t;
-
-	co_await t.async_wait(std::chrono::seconds(3), e);
-	std::cout << "hi\n";
+		}, qcoro::use_await_t);
+	co_await a;
 	co_return;
 }
 
@@ -68,9 +65,10 @@ int main()
 	tp.join();
 
 	// 单线程执行器
-	qcoro::executor e;
 	//同步
-	qcoro::co_spawn(func, e);
+	qcoro::co_spawn(func, qcoro::use_await_t);
+
+	std::system("pause");
 	
 	return 0;
 }
