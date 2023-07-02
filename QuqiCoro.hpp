@@ -14,6 +14,8 @@
 #include <vector>
 #include <condition_variable>
 #include <stdexcept>
+#include <utility>
+#include <future>
 
 QUQICORO_NAMESPACE_START
 
@@ -120,9 +122,38 @@ public:
         _post(std::bind(std::forward<Func>(func), std::forward<Args>(args)...));
     }
 
+    // post a task and get a future
+    template<typename Func, typename... Args>
+    auto post_with_future(Func&& func, Args&&... args) -> std::future<decltype(func(args...))>
+    {
+        std::shared_ptr<std::promise<decltype(func(args...))>> promise =
+            std::make_shared<std::promise<decltype(func(args...))>>();
+        auto loc_future = promise->get_future();
+
+        _post([promise, func, args...]() -> void {
+            try
+            {
+                promise->set_value(func(args...));
+            }
+            catch (...)
+            {
+                try
+                {
+                    promise->set_exception(std::current_exception());
+                }
+                catch (...) {}
+            }
+            });
+
+        return loc_future;
+    }
+
 protected:
     virtual void _post(std::function<void()> func)
     {
+        if (!is_running_)
+            throw std::runtime_error("thread pool has closed");
+
         std::lock_guard<std::mutex> lock(mutex_);
         funcs_.push(func);
         cv_.notify_one();
